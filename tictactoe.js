@@ -17,6 +17,7 @@ const GameBoard = (() => {
   let _gameBoard = clearGameBoard();
   let _player = [];
   let _currentPlayer = 0;
+  let _possibleMoves = 9;
 
   let _board;
   let _resetButton;
@@ -44,6 +45,7 @@ const GameBoard = (() => {
     _player.push(Player(_player2field.value, "O"));
 
     disableUI(true);
+    _possibleMoves = 9;
     renderBoard();
   };
 
@@ -55,6 +57,7 @@ const GameBoard = (() => {
   };
 
   const resetGame = () => {
+    _possibleMoves = 9;
     disableUI(false);
     clearBoard();
   };
@@ -95,6 +98,9 @@ const GameBoard = (() => {
     });
 
     checkForWinner();
+    if (_possibleMoves < 1) {
+      setWinner("tie");
+    }
   };
 
   const setWinner = (winner) => {
@@ -104,7 +110,12 @@ const GameBoard = (() => {
     let banner = document.createElement("div");
     banner.classList.add("winnerBanner");
     let message = document.createElement("p");
-    message.innerText = `Winner is ${winner}`;
+    if (winner === "tie") {
+      message.innerText = `TIE!`;
+    } else {
+      message.innerText = `Winner is ${winner}`;
+    }
+
     banner.appendChild(message);
     _board.appendChild(banner);
   };
@@ -118,6 +129,7 @@ const GameBoard = (() => {
   };
 
   const checkForWinner = () => {
+    _possibleMoves -= 1;
     // rows
     for (let i = 0; i <= 6; i += 3) {
       check(i, i + 1, i + 2);
