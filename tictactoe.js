@@ -1,53 +1,17 @@
 //Function Pattern
 const Player = (name, symbol) => {
-  const _symbol = symbol;
+  const getSymbol = () => symbol;
+  const getName = () => name;
 
-  const getSymbol = () => _symbol;
-  const sayName = () => {
-    console.log(`My Name is ${name}`);
-  };
-
-  return { sayName, getSymbol };
+  return { getSymbol, getName };
 };
 
-// Module Pattern IIFE  => Singleton
-const GameBoard = (() => {
-  const clearGameBoard = () => ["", "", "", "", "", "", "", "", ""];
-
-  let _gameBoard = clearGameBoard();
-  let _player = [];
-  let _currentPlayer = 0;
-  let _possibleMoves = 9;
-
+const UI = (() => {
   let _board;
   let _resetButton;
   let _startButton;
   let _player1field;
   let _player2field;
-
-  const clearBoard = () => {
-    _gameBoard = clearGameBoard();
-    _currentPlayer = 0;
-    _board.innerHTML = "";
-  };
-
-  const switchPlayer = () => {
-    _currentPlayer = _currentPlayer ? 0 : 1;
-  };
-  const clickField = (fieldIndex) => {
-    _gameBoard[fieldIndex] = _player[_currentPlayer].getSymbol();
-    switchPlayer();
-    renderBoard();
-  };
-
-  const startGame = () => {
-    _player.push(Player(_player1field.value, "X"));
-    _player.push(Player(_player2field.value, "O"));
-
-    disableUI(true);
-    _possibleMoves = 9;
-    renderBoard();
-  };
 
   const disableUI = (val) => {
     _player1field.disabled = val;
@@ -56,12 +20,25 @@ const GameBoard = (() => {
     _resetButton.disabled = !val;
   };
 
-  const resetGame = () => {
-    _possibleMoves = 9;
-    disableUI(false);
-    clearBoard();
+  const drawVictoryBanner = (winnertext) => {
+    let banner = document.createElement("div");
+    banner.classList.add("winnerBanner");
+    let message = document.createElement("p");
+
+    message.innerText = winnertext;
+
+    banner.appendChild(message);
+    _board.appendChild(banner);
   };
 
+  const board = () => _board;
+  const hideBoard = () => {
+    _board.innerHTML = "";
+  };
+  const getPlayer = () => [
+    Player(_player1field.value, "X"),
+    Player(_player2field.value, "O"),
+  ];
   const init = (
     gameBoard,
     player1field,
@@ -76,28 +53,82 @@ const GameBoard = (() => {
     _startButton = document.getElementById(startButton);
     _resetButton = document.getElementById(resetButton);
 
-    _startButton.addEventListener("click", startGame);
-    _resetButton.addEventListener("click", resetGame);
+    _startButton.addEventListener("click", GameBoard.startGame);
+    _resetButton.addEventListener("click", GameBoard.resetGame);
 
     _resetButton.disabled = true;
   };
 
+  const renderField = (value, index, callback) => {
+    let f = document.createElement("div");
+
+    f.innerText = value;
+    f.innerText ? f.classList.add("deselect") : f.classList.add("field");
+
+    if (!value) {
+      f.addEventListener("click", () => callback(index));
+    }
+
+    _board.appendChild(f);
+  };
+
+  return {
+    disableUI,
+    init,
+    hideBoard,
+    getPlayer,
+    renderField,
+    board,
+    drawVictoryBanner,
+  };
+})();
+
+// Module Pattern IIFE  => Singleton
+const GameBoard = (() => {
+  const generateClearGameBoard = () => ["", "", "", "", "", "", "", "", ""];
+
+  let _gameBoard = generateClearGameBoard();
+  let _player = [];
+  let _currentPlayer = 0;
+  let _possibleMoves = 9;
+
+  const clearBoard = () => {
+    _gameBoard = generateClearGameBoard();
+    _currentPlayer = 0;
+    _possibleMoves = 9;
+    UI.hideBoard();
+  };
+
+  const switchPlayer = () => {
+    _currentPlayer = _currentPlayer ? 0 : 1;
+  };
+  const clickField = (fieldIndex) => {
+    _gameBoard[fieldIndex] = _player[_currentPlayer].getSymbol();
+    renderBoard();
+    if (!checkForWinner()) {
+      switchPlayer();
+    }
+  };
+
+  const startGame = () => {
+    _player = UI.getPlayer();
+
+    UI.disableUI(true);
+
+    clearBoard();
+    renderBoard();
+  };
+
+  const resetGame = () => {
+    UI.disableUI(false);
+    clearBoard();
+  };
+
   const renderBoard = () => {
-    _board.innerHTML = "";
+    UI.hideBoard();
     _gameBoard.forEach((field, index) => {
-      let f = document.createElement("div");
-
-      f.innerText = _gameBoard[index];
-      f.innerText ? f.classList.add("deselect") : f.classList.add("field");
-
-      if (!field) {
-        f.addEventListener("click", () => clickField(index));
-      }
-
-      _board.appendChild(f);
+      UI.renderField(field, index, clickField);
     });
-
-    checkForWinner();
     if (_possibleMoves < 1) {
       setWinner("tie");
     }
@@ -105,51 +136,48 @@ const GameBoard = (() => {
 
   const setWinner = (winner) => {
     if (winner === undefined) return;
-    clearBoard();
-    disableUI(false);
-    let banner = document.createElement("div");
-    banner.classList.add("winnerBanner");
-    let message = document.createElement("p");
-    if (winner === "tie") {
-      message.innerText = `TIE!`;
-    } else {
-      message.innerText = `Winner is ${winner}`;
-    }
 
-    banner.appendChild(message);
-    _board.appendChild(banner);
+    UI.hideBoard();
+    UI.disableUI(false);
+
+    let winnertext =
+      winner === "tie"
+        ? "TIE"
+        : `Winner is ${winner} ( ${_player[_currentPlayer].getName()} )`;
+
+    UI.drawVictoryBanner(winnertext);
   };
 
   const check = (i, j, k) => {
     if (_gameBoard[i] === _gameBoard[j] && _gameBoard[i] === _gameBoard[k]) {
       if (_gameBoard[i] !== "") {
         setWinner(_gameBoard[i]);
+        return true;
       }
     }
+    return false;
   };
 
   const checkForWinner = () => {
     _possibleMoves -= 1;
+    let result = false;
     // rows
     for (let i = 0; i <= 6; i += 3) {
-      check(i, i + 1, i + 2);
+      result = result ? true : check(i, i + 1, i + 2);
     }
     //columns
+
     for (let i = 0; i <= 2; i++) {
-      check(i, i + 3, i + 6);
+      result = result ? true : check(i, i + 3, i + 6);
     }
     //diagonal
-    check(0, 4, 8);
-    check(2, 4, 6);
+    result = result ? true : check(0, 4, 8);
+    result = result ? true : check(2, 4, 6);
+
+    return result;
   };
 
-  return { init };
+  return { startGame, resetGame };
 })();
 
-GameBoard.init(
-  "gameBoard",
-  "player1Name",
-  "player2Name",
-  "startGame",
-  "resetGame"
-);
+UI.init("gameBoard", "player1Name", "player2Name", "startGame", "resetGame");
