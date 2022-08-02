@@ -30,8 +30,7 @@ const UI = (() => {
     banner.appendChild(message);
     _board.appendChild(banner);
   };
-
-  const board = () => _board;
+  
   const hideBoard = () => {
     _board.innerHTML = "";
   };
@@ -78,7 +77,6 @@ const UI = (() => {
     hideBoard,
     getPlayer,
     renderField,
-    board,
     drawVictoryBanner,
   };
 })();
